@@ -1,0 +1,1107 @@
+---
+title: "Wicket Gate Replacement Economic Analysis"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    logo: WhiteTransparentLogo-small.png
+    theme: spacelab
+    css: styles.css
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+
+library(flexdashboard)
+
+source("Functions.R")
+
+# Default values
+{
+  # Costs incurred for other projects at time 0
+  sunk.cost.labor.default <- c(2500, 3500, 4500)
+  sunk.cost.outage.default <- c(315, 924, 1927.8)
+  
+  
+  # Refurbish
+  wg.refurb.life.default <- c(15,30,45)
+  wg.refurb.cost.materials.default <- c(500, 800, 3000)
+  wg.refurb.cost.labor.default <- c(2500, 3500, 4500)
+  wg.refurb.cost.outage.default <- c(315, 924, 1927.8)
+  
+  
+  # New
+  wg.replace.life.default <- c(100, 100, 100)
+  wg.replace.cost.materials.default <- c(1800, 2200, 3000)
+  wg.replace.cost.labor.default <- c(2500, 3500, 4500)
+  wg.replace.cost.outage.default <- c(315, 924, 1927.8)
+  
+  
+  n.default <- 10000
+  rate.discount.default <- .044
+  n.units.default <- 7
+}
+
+
+
+```
+
+Selections {.sidebar data-width=350}
+=====================================
+
+***
+
+```{r input_run}
+
+actionButton("run.simulation", label = "Run simulation")
+
+```
+
+***
+
+```{r input_reset}
+
+actionButton("reset", label = "Reset values to default")
+
+observeEvent(
+  input$reset,
+  {
+    # Refurb
+      updateSliderInput(
+        inputId = "refurb.cost.labor.bounds", 
+        value = wg.refurb.cost.labor.default[c(1,3)]
+      )
+      updateNumericInput(
+        inputId = "refurb.cost.labor.ev",
+        value = wg.refurb.cost.labor.default[2]
+      )
+      updateSliderInput(
+        inputId = "refurb.cost.materials.bounds", 
+        value = wg.refurb.cost.materials.default[c(1,3)]
+      )
+      updateNumericInput(
+        inputId = "refurb.cost.materials.ev",
+        value = wg.refurb.cost.materials.default[2]
+      )
+      updateSliderInput(
+        inputId = "refurb.cost.outage.bounds", 
+        value = wg.refurb.cost.outage.default[c(1,3)]
+      )
+      updateNumericInput(
+        inputId = "refurb.cost.outage.ev",
+        value = wg.refurb.cost.outage.default[2]
+      )
+      updateSliderInput(
+        inputId = "refurb.life.bounds", 
+        value = wg.refurb.life.default[c(1,3)]
+      )
+      updateNumericInput(
+        inputId = "refurb.life.ev",
+        value = wg.refurb.life.default[2]
+      )
+      
+    # Replace
+      updateSliderInput(
+        inputId = "replace.cost.labor.bounds", 
+        value = wg.replace.cost.labor.default[c(1,3)]
+      )
+      updateNumericInput(
+        inputId = "replace.cost.labor.ev",
+        value = wg.replace.cost.labor.default[2]
+      )
+      updateSliderInput(
+        inputId = "replace.cost.materials.bounds", 
+        value = wg.replace.cost.materials.default[c(1,3)]
+      )
+      updateNumericInput(
+        inputId = "replace.cost.materials.ev",
+        value = wg.replace.cost.materials.default[2]
+      )
+      updateSliderInput(
+        inputId = "replace.cost.outage.bounds", 
+        value = wg.replace.cost.outage.default[c(1,3)]
+      )
+      updateNumericInput(
+        inputId = "replace.cost.outage.ev",
+        value = wg.replace.cost.outage.default[2]
+      )
+      updateSliderInput(
+        inputId = "replace.life.bounds", 
+        value = wg.replace.life.default[c(1,3)]
+      )
+      updateNumericInput(
+        inputId = "replace.life.ev",
+        value = wg.replace.life.default[2]
+      )
+    
+    # Other
+      updateSliderInput(inputId = "rate.discount", value = rate.discount.default*100)
+      updateSliderInput(
+        inputId = "sunk.cost.labor.bounds", 
+        value = sunk.cost.labor.default[c(1,3)]
+      )
+      updateNumericInput(
+        inputId = "sunk.cost.labor.ev",
+        value = sunk.cost.labor.default[2]
+      )
+      updateSliderInput(
+        inputId = "sunk.cost.outage.bounds", 
+        value = sunk.cost.outage.default[c(1,3)]
+      )
+      updateNumericInput(
+        inputId = "sunk.cost.outage.ev",
+        value = sunk.cost.outage.default[2]
+      )
+      updateSliderInput(inputId = "n", value = n.default)
+      updateSliderInput(inputId = "n.units", value = n.units.default)
+  }
+)
+
+
+```
+
+
+***
+
+Cost inputs in thousands of dollars.
+
+***
+
+
+### **Refurbish Inputs:**
+
+##### *Materials*
+
+```{r}
+# Materials
+  sliderInput(
+    "refurb.cost.materials.bounds", "Cost Bounds:",  
+    min = 0, 
+    value = c(wg.refurb.cost.materials.default[1], wg.refurb.cost.materials.default[3]),
+    max = 5000, 
+    step = 50
+  )
+  
+  numericInput(
+    "refurb.cost.materials.ev",
+    "Cost Expected Value:",
+    value = wg.refurb.cost.materials.default[2], 
+    step = 50
+  )
+```
+
+***
+
+<!-- ##### *Labor* -->
+
+```{r eval=FALSE, include=FALSE}
+# Labor
+  sliderInput(
+      "refurb.cost.labor.bounds", "Cost Bounds:",  
+      min = 0, 
+      value = c(wg.refurb.cost.labor.default[1], wg.refurb.cost.labor.default[3]),
+      max = 6000, 
+      step = 50
+    )
+    
+  numericInput(
+    "refurb.cost.labor.ev",
+    "Cost Expected Value:",
+    value = wg.refurb.cost.labor.default[2], 
+    step = 100
+  )
+```
+
+<!-- *** -->
+
+<!-- ##### *Outage* -->
+
+```{r eval=FALSE, include=FALSE}
+# Outage
+  sliderInput(
+    "refurb.cost.outage.bounds", "Cost Bounds:",  
+    min = 0, 
+    value = c(wg.refurb.cost.outage.default[1],wg.refurb.cost.outage.default[3]),
+    max = 1000, 
+    step = 25
+  )
+  
+  numericInput(
+    "refurb.cost.outage.ev",
+    "Cost Expected Value:",
+    value = wg.refurb.cost.outage.default[2],
+    step = 50
+  )
+```
+
+<!-- *** -->
+
+##### *Life*
+
+```{r}
+# Life
+  sliderInput(
+    "refurb.life.bounds", "Life Bounds:",  
+    min = 0, 
+    value = c(wg.refurb.life.default[1], wg.refurb.life.default[3]),
+    max = 100, 
+    step = 1
+  )
+  
+  numericInput(
+    "refurb.life.ev",
+    "Life Expected Value:",
+    value = wg.refurb.life.default[2],
+    step = 1
+  )
+```
+
+***
+
+### **Replace Inputs:**
+
+##### *Materials*
+
+```{r}
+
+# Materials
+  sliderInput(
+    "replace.cost.materials.bounds", "Cost Bounds:",  
+    min = 0, 
+    value = c(wg.replace.cost.materials.default[1], wg.replace.cost.materials.default[3]),
+    max = 5000, 
+    step = 50
+  )
+  
+  numericInput(
+    "replace.cost.materials.ev",
+    "Cost Expected Value:",
+    value = wg.replace.cost.materials.default[2], 
+    step = 100
+  )
+
+
+```
+
+***
+
+##### *Labor (Future)*
+
+```{r}
+
+# Labor
+  sliderInput(
+      "replace.cost.labor.bounds", "Cost Bounds:",  
+      min = 0, 
+      value = c(wg.replace.cost.labor.default[1], wg.replace.cost.labor.default[3]),
+      max = 6000, 
+      step = 50
+    )
+    
+  numericInput(
+    "replace.cost.labor.ev",
+    "Cost Expected Value:",
+    value = wg.replace.cost.labor.default[2], 
+    step = 100
+  )
+  
+```
+
+***
+
+##### *Outage (Future)*
+
+```{r}
+
+# Outage
+  sliderInput(
+    "replace.cost.outage.bounds", "Cost Bounds:",  
+    min = 0, 
+    value = c(wg.replace.cost.outage.default[1],wg.replace.cost.outage.default[3]),
+    max = 3000, 
+    step = 25
+  )
+  
+  numericInput(
+    "replace.cost.outage.ev",
+    "Cost Expected Value:",
+    value = wg.replace.cost.outage.default[2],
+    step = 50
+  )
+  
+```
+
+***
+
+##### *Life*
+
+```{r}
+
+# Life
+  sliderInput(
+    "replace.life.bounds", "Life Bounds:",  
+    min = 50, 
+    value = c(wg.replace.life.default[1], wg.replace.life.default[3]),
+    max = 200, 
+    step = 1
+  )
+  
+  numericInput(
+    "replace.life.ev",
+    "Life Expected Value:",
+    value = wg.replace.life.default[2],
+    step = 5
+  )
+
+```
+
+***
+
+
+### **Other:**
+
+<!-- ##### *Sunk Labor* -->
+
+```{r eval=FALSE, include=FALSE}
+
+# Labor
+  sliderInput(
+      "sunk.cost.labor.bounds", "Cost Bounds:",  
+      min = 0, 
+      value = c(sunk.cost.labor.default[1], sunk.cost.labor.default[3]),
+      max = 6000, 
+      step = 50
+    )
+    
+  numericInput(
+    "sunk.cost.labor.ev",
+    "Cost Expected Value:",
+    value = sunk.cost.labor.default[2], 
+    step = 100
+  )
+  
+```
+
+<!-- ##### *Sunk Outage* -->
+
+```{r eval=FALSE, include=FALSE}
+
+# OUtage
+  sliderInput(
+    "sunk.cost.outage.bounds", "Cost Bounds:",  
+    min = 0, 
+    value = c(sunk.cost.outage.default[1], sunk.cost.outage.default[3]),
+    max = 1000, 
+    step = 25
+  )
+  
+  numericInput(
+    "sunk.cost.outage.ev",
+    "Cost Expected Value:",
+    value = sunk.cost.outage.default[2], 
+    step = 50
+  )
+
+
+```
+
+#### *Simulation Variables*
+
+```{r}
+
+sliderInput(
+  "n", "Simulation Size:",  
+  min = 1000, 
+  value = n.default,
+  max = 100000, 
+  step = 500
+)
+
+sliderInput(
+  "n.units", "Number of Units:",  
+  min = 1, 
+  value = n.units.default,
+  max = 7, 
+  step = 1
+)
+
+sliderInput(
+  "rate.discount", "Discount Rate:",  
+  min = 0, 
+  value = rate.discount.default*100,
+  max = .2*100, 
+  step = .001*100,
+  post = "%"
+)
+
+```
+
+
+***
+
+```{r define_vars}
+
+# Sunk
+  sunk.cost.labor <- reactive({c(
+    input$sunk.cost.labor.bounds[1],
+    input$sunk.cost.labor.ev,
+    input$sunk.cost.labor.bounds[2]
+  )*1000})
+  
+  sunk.cost.outage <- reactive({c(
+    input$sunk.cost.outage.bounds[1],
+    input$sunk.cost.outage.ev,
+    input$sunk.cost.outage.bounds[2]
+  )*1000})
+
+# Other
+  n <- reactive({input$n})
+  n.units <- reactive({input$n.units})
+  rate.discount <- reactive({input$rate.discount/100})
+
+# Refurb
+  refurb.cost.materials <- reactive({c(
+    input$refurb.cost.materials.bounds[1],
+    input$refurb.cost.materials.ev,
+    input$refurb.cost.materials.bounds[2]
+  )*1000})
+  
+  refurb.cost.labor <- reactive({c(
+    input$refurb.cost.labor.bounds[1],
+    input$refurb.cost.labor.ev,
+    input$refurb.cost.labor.bounds[2]
+  )*1000})
+  
+  refurb.cost.outage <- reactive({c(
+    input$refurb.cost.outage.bounds[1],
+    input$refurb.cost.outage.ev,
+    input$refurb.cost.outage.bounds[2]
+  )*1000})
+  
+  refurb.life <- reactive({c(
+    input$refurb.life.bounds[1],
+    input$refurb.life.ev,
+    input$refurb.life.bounds[2]
+  )})
+
+# Replace
+  new.cost.materials <- reactive({c(
+    input$replace.cost.materials.bounds[1],
+    input$replace.cost.materials.ev,
+    input$replace.cost.materials.bounds[2]
+  )*1000})
+  
+  new.cost.labor <- reactive({c(
+    input$replace.cost.labor.bounds[1],
+    input$replace.cost.labor.ev,
+    input$replace.cost.labor.bounds[2]
+  )*1000})
+  
+  new.cost.outage <- reactive({c(
+    input$replace.cost.outage.bounds[1],
+    input$replace.cost.outage.ev,
+    input$replace.cost.outage.bounds[2]
+  )*1000})
+  
+  new.life <- reactive({c(
+    input$replace.life.bounds[1],
+    input$replace.life.ev,
+    input$replace.life.bounds[2]
+  )})
+
+```
+
+
+```{r sim_df}
+
+
+
+sim.pert.all <- reactive(
+  {
+    sim.pert <- sapply(
+        list(
+          refurb.cost.materials(), refurb.cost.labor(), refurb.cost.outage(),
+          refurb.life(), new.cost.materials(), new.cost.labor(), new.cost.outage(),
+          new.life(), sunk.cost.labor(), sunk.cost.outage()
+        ),
+        \(x){ fn_vector_to_dist(n(), x, rpert)}
+      ) %>%
+        as_tibble() %>%
+        rename_all(~ c(
+          "refurb.cost.mats", "refurb.cost.labor", "refurb.cost.outage", "refurb.L",
+          "new.cost.mats", "new.cost.labor", "new.cost.outage", "new.L",
+          "coincidental.cost.labor", "coincidental.cost.outage"
+        )) %>% 
+        mutate(across(-contains("L", ignore.case = F), \(x){x * n.units()}))
+  
+    cost.refurb.pert <- sim.pert %>%
+      mutate(rate.discount = rate.discount()) %>% 
+      pmap_dbl(., .f = fn_cost.refurb)
+  
+  
+    cost.replace.pert <- sim.pert %>%
+      select(contains("new") | contains("coin")) %>%
+      mutate(rate.discount = rate.discount()) %>% 
+      pmap_dbl(., .f = fn_cost.replace)
+  
+    sim.pert.all <- cbind(sim.pert, cost.refurb.pert, cost.replace.pert) %>%
+      mutate(
+        cost.net = cost.refurb.pert - cost.replace.pert,
+        optimal.choice = ifelse(cost.net >= 0, "replace", "refurb")
+      )
+  
+    return(sim.pert.all)
+
+  }) %>% 
+  bindEvent(input$run.simulation)
+
+
+# Probabilities
+prob <- reactive({
+  fn_fit.logit(simulation = sim.pert.all(), rate.discount = rate.discount())
+})
+
+# Breakeven
+refurb.L.breakeven <- reactive({
+  fn_get.breakeven(sim.pert.all()$refurb.L, prob(), .5)
+})
+
+```
+
+
+
+Simulation Results
+======================================================================
+
+Column
+-----------------------------------------------------------------------
+
+```{r}
+
+# Cost Min, Max
+cost.refurb.min <- reactive({
+  min(sim.pert.all()$cost.refurb.pert)
+})
+
+cost.refurb.max <- reactive({
+  max(sim.pert.all()$cost.refurb.pert)
+})
+
+cost.replace.min <- reactive({
+  min(sim.pert.all()$cost.replace.pert)
+})
+
+cost.replace.max <- reactive({
+  max(sim.pert.all()$cost.replace.pert)
+})
+
+cost.min <- reactive({
+  min(cost.refurb.min(), cost.replace.min())
+})
+
+cost.max <- reactive({
+  max(cost.refurb.max(), cost.replace.max())
+})
+
+
+
+```
+
+
+### Option 1:  PV Unit Cost to Refurbish Now and Then Replace at End of Life 
+
+```{r chart_cost.refurb}
+
+# renderTable({
+#   sim.pert.all() %>% colnames()
+# })
+renderPlot({
+  sim.pert.all()$cost.refurb.pert %>%
+    fn_chart.shaded.density() +
+    scale_x_continuous(
+      # "PV Cost", 
+      labels = scales::label_dollar(),
+      limits = c(cost.min(), cost.max())
+    ) +
+    theme(
+      axis.title = element_blank()
+    )
+})
+
+```
+
+### Option 2:  PV Unit Cost to Replace Now
+
+```{r}
+
+renderPlot({
+  sim.pert.all()$cost.replace.pert %>%
+    fn_chart.shaded.density() +
+    scale_x_continuous(
+      # "PV Cost", 
+      labels = scales::label_dollar(),
+      limits = c(cost.min(), cost.max())
+    ) +
+    theme(
+      axis.title = element_blank()
+    )
+  
+  
+})
+```
+
+
+### Net Difference: PV Savings [Cost] by doing Option 2 
+
+```{r}
+ renderPlot({
+   # fn_chart.cost.net(sim.pert.all()) +
+   #   theme(
+   #     plot.title = element_blank()
+   #   )
+   
+   fn_chart.shaded.density(sim.pert.all()$cost.net) +
+    annotate(
+      "text", x = -100000, y = 0, label = "← Refurbish is optimal", size = 3,
+      hjust = 1, vjust = 1
+    ) +
+    annotate(
+      "text", x = 100000, y = 0, label = "Replace is optimal →", size = 3,
+      hjust = 0, vjust = 1
+    ) +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    scale_x_continuous(
+      "NPV of doing Option 2", 
+      labels = scales::label_dollar()
+    ) +
+    theme(
+      plot.title = element_blank()
+    )
+ })
+
+```
+
+
+
+Column {data-width=140}
+-----------------------------------------------------------------------
+
+```{r}
+
+tbl.summary <- reactive({
+  sim.pert.all() %>% 
+  select(-optimal.choice) %>%
+    mutate(
+      `Refurbished Labor Cost` = refurb.cost.labor,# - coincidental.cost.labor,
+      `Refurbished Outage Cost` = refurb.cost.outage,# - coincidental.cost.outage,
+      `Replace Labor Cost` = new.cost.labor,# - coincidental.cost.labor,
+      `Replace Outage Cost` = new.cost.outage,# - coincidental.cost.outage,
+      
+      .keep = "unused"
+    ) %>% 
+    relocate(starts_with("refurb"), starts_with("new"), starts_with("Replace"), contains("cost")) %>% 
+    rename(
+      `Refurbished Materials Cost` = refurb.cost.mats, 
+      `Replace Materials Cost` = new.cost.mats, 
+      `Refurbished Unit Life` = refurb.L,
+      `PV Cost - Refurbished` = cost.refurb.pert,
+      `PV Cost - Replace` = cost.replace.pert,
+      `NPV Cost` = cost.net
+    ) %>% 
+    select(-contains("coin"), -new.L) %>% 
+    summarize(
+      across(everything(), .fns = mean)
+    ) %>% 
+    pivot_longer(cols = everything(), names_to = "Variable", values_to = "Mean") %>% 
+    mutate(
+      Mean = label_comma()(Mean)
+    )
+})
+
+renderUI({
+  tbl.summary() %>% 
+    kbl(align = c("l", "r")) %>% 
+    kable_styling(bootstrap_options = "striped", full_width = F, position = "center") %>% 
+    HTML()
+})
+
+```
+
+```{r}
+
+choice.proportions <- reactive({
+  sim.pert.all() %>% 
+    count(optimal.choice) %>% 
+    mutate(
+      percent = n / sum(n)
+    )
+})
+
+best.replace.prop <- reactive({
+  choice.proportions()[choice.proportions()$optimal.choice == "replace", "percent"]
+})
+
+best.refurb.prop <- reactive({
+  choice.proportions()[choice.proportions()$optimal.choice == "refurb", "percent"]
+})
+
+best.sentence <- reactive({
+  if(best.replace.prop() >= .5){
+    paste0(
+      label_percent()(best.replace.prop()), " of cases result in replacement being the better choice.",
+      " The other ", label_percent()(best.refurb.prop()), " of cases have refurbishment being better."
+    )
+  } else{
+    paste0(
+      label_percent()(best.refurb.prop()), " of cases result in refurbishment being the better choice.",
+      " The other ", label_percent()(best.replace.prop()), " of cases have replacement being better."
+    )
+  }
+  
+})
+
+# suggestion <- reactive({
+#   if(best.replace.prop() >= .6){
+#     paste("Recommendation under current parameters:", "Replace", sep = "\n\t")
+#   } else if(best.refurb.prop() >= .6){
+#     paste0("Recommendation under current parameters:\n\tRefurbish")
+#   } else{
+#     "Replace & refurbish both result in about the same cost."
+#   }
+# })
+
+
+```
+
+> `r renderText({best.sentence()})` 
+
+Marginal Plots
+======================================================================
+
+Column {data-width=400, .tabset}
+-----------------------------------------------------------------------
+
+
+```{r include=FALSE}
+
+
+tbl.refurb.L <- reactive({
+  sim.pert.all() %>% 
+    as_tibble() %>% 
+    mutate(
+        refurb.L = round(refurb.L)
+      ) %>% 
+      group_by(refurb.L) %>% 
+      summarise(
+        # n = n(),
+        across(c(cost.refurb.pert, cost.replace.pert, cost.net), mean)
+      ) %>% 
+    filter(between(refurb.L, refurb.L.breakeven() - 5, refurb.L.breakeven() + 5)) %>% 
+    mutate(across(c(cost.refurb.pert, cost.replace.pert, cost.net), \(x){label_dollar(accuracy = .01, scale = 1/1000000, suffix = "M")(x)})) %>% 
+    rename_with(~c("Refurbished Life", "Avg Refurb Cost", "Avg Replace Cost", "Avg Diff")) # , "Modeled Refurb Cost"
+})
+
+```
+
+
+### Refurbished Wicket Gate Life
+
+```{r chart_scatter}
+#### Scatterplot of Project Net Present Value to Refurbished Wicket Gate life
+
+renderPlot({
+  grid.arrange(
+    (fn_chart.marginal.scatter(sim.pert.all(), "refurb.L", x.label = "Life of Refurbished Wicket Gate") + 
+      annotate(
+        geom = "table", x = Inf, y = Inf, 
+        label = list(tbl.refurb.L()), 
+        vjust = 1, size = 4
+      )) %>% 
+      ggMarginal(., type = "histogram", margins = "x", size = 10),
+    fn_chart.marginal.frequency(sim.pert.all(), "refurb.L", x.label = "Life of Refurbished Wicket Gate")
+  )
+})
+
+    
+```
+
+
+### Refurbished Material Cost
+
+```{r}
+#### Scatterplot of Project Net Present Value to Refurbished Wicket Gate life
+
+renderPlot({
+  grid.arrange(
+    fn_chart.marginal.scatter(
+      sim.pert.all(), "refurb.cost.mats", alpha.var = "refurb.L", x.label = "Material Cost to Refurbish"
+    ),
+    fn_chart.marginal.frequency(sim.pert.all(), "refurb.cost.mats", x.label = "Material Cost to Refurbish")
+  )
+})
+
+    
+```
+
+
+### Replace Material Cost
+
+```{r}
+#### Scatterplot of Project Net Present Value to Refurbished Wicket Gate life
+
+renderPlot({
+  grid.arrange(
+    fn_chart.marginal.scatter(
+      sim.pert.all(), "new.cost.mats", alpha.var = "refurb.L", x.label = "Material Cost to Replace"
+    ) %>% 
+      ggMarginal(., type = "histogram", margins = "x", size = 10),
+    fn_chart.marginal.frequency(sim.pert.all(), "new.cost.mats", x.label = "Material Cost to Replace")
+  )
+})
+
+    
+```
+
+
+
+### Future Outage Cost
+
+```{r}
+#### Scatterplot of Project Net Present Value to Refurbished Wicket Gate life
+
+renderPlot({
+  grid.arrange(
+    fn_chart.marginal.scatter(
+      sim.pert.all(), "new.cost.outage", alpha.var = "refurb.L", x.label = "Future Outage Cost"
+    ) %>% 
+      ggMarginal(., type = "histogram", margins = "x", size = 10),
+    fn_chart.marginal.frequency(sim.pert.all(), "new.cost.outage", x.label = "Future Outage Cost")
+  )
+})
+
+    
+```
+
+
+### Future Labor Cost
+
+```{r}
+#### Scatterplot of Project Net Present Value to Refurbished Wicket Gate life
+
+renderPlot({
+  grid.arrange(
+    fn_chart.marginal.scatter(
+      sim.pert.all(), "new.cost.labor", alpha.var = "refurb.L", x.label = "Future Labor Cost"
+    ),
+    fn_chart.marginal.frequency(sim.pert.all(), "new.cost.labor", x.label = "Future Labor Cost")
+  )
+})
+
+    
+```
+
+
+
+Probabilistic Modeling
+======================================================================
+
+```{r eval=FALSE, include=FALSE}
+
+
+
+```
+
+Column {.tabset}
+-----------------------------------------------------------------------
+
+
+
+### Refurbished Wicket Gate Life
+
+```{r}
+
+renderPlot({
+  (fn_chart.logit(
+    sim.pert.all(), prob(), quantile.vec = c(.1,.25,.5,.75, .9), x.var = "refurb.L"
+  ) + xlab("Life of Refurbished Wicket Gate")) %>%
+    ggMarginal(., type = "histogram", margins = "both", size = 10)
+})
+
+
+```
+
+
+### Refurbished Material Cost
+
+
+```{r}
+
+
+renderPlot({
+  (fn_chart.logit(
+    sim.pert.all(), prob(), quantile.vec = c(.1,.25,.5,.75, .9), 
+    x.var = "refurb.cost.mats", 
+    fn_format = label_dollar(
+      accuracy = .01, scale = 1/1000000, suffix = "M"
+    )
+  ) +
+    scale_x_continuous(
+      labels = label_dollar()
+      # expand = expansion(mult = .1)
+    ) +
+    theme(
+      legend.position = c(.75,.1)
+    ) + 
+      xlab("Material Cost to Refurbish")) %>% 
+    ggMarginal(., type = "histogram", margins = "both", size = 10)
+})
+
+
+```
+
+
+
+
+### Replace Material Cost
+
+```{r}
+
+
+renderPlot({
+  (fn_chart.logit(
+    sim.pert.all(), prob(), quantile.vec = c(.1,.25,.5,.75, .9), 
+    x.var = "new.cost.mats", 
+    fn_format = label_dollar(
+      accuracy = .01, scale = 1/1000000, suffix = "M"
+    )
+  ) +
+    scale_x_continuous(
+      labels = label_dollar()
+      # expand = expansion(mult = .15)
+    ) + 
+      xlab("Material Cost to Replace") +
+    theme(
+      legend.position = c(.1,.2)
+    )) %>% 
+    ggMarginal(., type = "histogram", margins = "both", size = 10)
+})
+
+
+```
+
+### Future Outage Cost
+
+```{r}
+
+
+renderPlot({
+  (fn_chart.logit(
+    sim.pert.all(), prob(), quantile.vec = c(.1,.25,.5,.75, .9), 
+    x.var = "new.cost.outage", 
+    fn_format = label_dollar(
+      accuracy = .01, scale = 1/1000000, suffix = "M"
+    )
+  ) +
+    scale_x_continuous(
+      labels = label_dollar()
+      # expand = expansion(mult = .15)
+    ) + xlab("Future Outage Cost") +
+    theme(
+      legend.position = c(.2,.2)
+    )) %>% 
+    ggMarginal(., type = "histogram", margins = "both", size = 10)
+})
+
+
+```
+
+
+
+### Future Labor Cost
+
+```{r}
+
+
+renderPlot({
+  (fn_chart.logit(
+    sim.pert.all(), prob(), quantile.vec = c(.1,.25,.5,.75, .9), 
+    x.var = "new.cost.labor", 
+    fn_format = label_dollar(
+      accuracy = .01, scale = 1/1000000, suffix = "M"
+    )
+  ) +
+    scale_x_continuous(
+      labels = label_dollar()
+      # expand = expansion(mult = .15)
+    ) + xlab("Future Labor Cost") +
+    theme(
+      legend.position = c(.2,.2)
+    )) %>% 
+    ggMarginal(., type = "histogram", margins = "both", size = 10)
+})
+
+
+```
+
+
+Column {data-width=140}
+-----------------------------------------------------------------------
+
+
+
+> These charts and probabilities are modeled using logistic regression. The *Estimated Probability* is the predicted chance that replacement is the better choice for a given observation. The color of each observation identifies the true optimal decision. The curve reflects the average probability given the corresponding variable on the X axis.
+
+> The *breakeven point*, where there is an equal probability between replacement versus refurbishment being the better choice, is identified where the logistic curve is equal to 50%.
+
+
+Documentation 
+======================================================================
+
+Column 
+-----------------------------------------------------------------------
+
+### Instructions 
+
+1. The left pane contains the inputs to the model and actions. 
+  - The scales adjust to specify the lower and upper bounds for the input.
+  - The text box contains the expected value.
+2. Hit the button "Run simulation" to begin.
+3. Navigate the pages along the top to view different charts and tables.
+4. The tabs *Marginal Plots* and *Probabilistic Modeling* both contain tabs of different variables.
+
+
+### Overview 
+- The PERT distribution is used to simulate the input values.
+  - This is a transformation of the Beta distribution and is common to use for project management simulations. 
+- The costs of both options are calculated for each sample of the simulation. The tables and charts are generated from this simulated data.
+- Because each of these options compare different durations (*option 1 is the life of refurbished wicket gate + life of new wicket gate / option 2 is only life of new wicket gate*), a costs-in-perpetuity adjustment is made to equalize these durations.
+  - The material, outage, and labor costs for a new wicket gate are assumed to occur every 100 years in perpetuity. These future costs are discounted to the present and added to both options, normalizing the durations between both.
+    - These costs far in the future are discounted tremendously and only add a small amount to the total costs. 
+      - Example: $1M cost occurring every 100 years starting in 100 years has a PV of $12,409 at a 4.5% discount rate.
+  - This differs from the Excel model. The model in Excel uses straight-line depreciation to equalize the durations. Both models provide consistent results with one another although some differences in the PV costs will be present.
+  - The difference in the PV costs will be proportional to the size of the costs and does not change the results.
+  
+
+### Simulation Results
+
+- This page shows the overall results of the simulation.
+- The distributions are the calculated PV costs for each observation in the simulation.
+- The bottom distribution is the difference of Option 2 costs to Option 1 costs for each observation.
+  - Positive values are savings by switching to Option 2.
+  - Negative values are added costs by switching to Option 2.
+
+### Marginal Plots
+
+- This page shows the relation of the Net Cost (Cost of Option 2 - Cost of Option 1) to several variables: Refurbished Wicket Gate Life, Refurbished Material cost, Replace Material Cost, Future Outage Cost, and Future Labor Cost.
+- The bottom chart shows the frequency plots for when Replace/Refurbish is the optimal choice. 
+  - Where the two lines intersect is the breakeven point, the point where there is a 50-50 chance of one option over the other.
+  
+
+### Probabilititic Modeling
+- This page fits a logistic regression model to the data.
+- The logistic curve gives the probability that replacement is the optimal choice for each value on the X-axis.
+  - I.e. For the life of refurbished wicket gate at 30 years, the logistic curve is at ~95%, meaning there is a 95% probability that at that refurbished life that replacement is the better option.
+- Shifts to the other parameters will result in a different logistic curve.
+  - I.e. With a $1M increase to the refurbish material cost, a greater refurbished wicket gate life would be needed to maintain it being the optimal choice. 
+- Tips:
+  - To reduce the error margin of the logistic curve, increase the sample size of the simulation or widen the bounds of that input. Either of these actions will decrease the *standard error* of the model and provide a better logistic fit.
